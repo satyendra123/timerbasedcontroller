@@ -66,7 +66,7 @@ while True:
             # Start timer and raise barrier after timer duration
             barrier_up = True
             up_relay.on()  # Raise barrier
-            auto_down_timer.init(period=auto_down_time * 1000, mode=Timer.ONE_SHOT, callback=close_barrier)
+            auto_down_timer.init(period=auto_down_time * 1000, mode=Timer.PERIODIC, callback=close_barrier)
             time.sleep_ms(timer_duration)
             if barrier_up:
                 up_relay.off()  # Lower barrier
