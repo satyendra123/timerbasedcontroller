@@ -3,6 +3,8 @@
 # so mai four button ki jagah par four wire connect kar lunga testing krne ke liye aur touch kar karke dekhunga time increase aur decrease karke ki aisa ho bhi rha hai ya nahi
 from machine import Pin, Timer
 import time
+import ujson
+import uos
 
 # Define pin numbers for buttons and relays
 SET_BUTTON_PIN = 2
@@ -30,6 +32,21 @@ down_relay = Pin(DOWN_RELAY_PIN, Pin.OUT)
 # Set relays to initial state (barrier down)
 up_relay.off()
 down_relay.on()
+
+# Define file name for storing timer duration
+TIMER_FILE = 'timer.json'
+
+# Load previous timer duration from file
+try:
+    with open(TIMER_FILE, 'r') as f:
+        timer_duration = ujson.load(f)
+except OSError:
+    # File does not exist or unable to open
+    pass
+
+# Initialize timer if not loaded from file
+if timer_duration <= 0:
+    timer_duration = 0
 
 # Timer callback function to close the barrier
 def close_barrier(timer):
@@ -61,16 +78,20 @@ while True:
 
             # Display timer duration (e.g., using LEDs or a display)
 
-        # Check if ok button is pressed (to confirm timer setting)
-        if not ok_button.value():
-            # Start timer and raise barrier after timer duration
-            barrier_up = True
-            up_relay.on()  # Raise barrier
-            auto_down_timer.init(period=auto_down_time * 1000, mode=Timer.PERIODIC, callback=close_barrier)
-            time.sleep_ms(timer_duration)
-            if barrier_up:
-                up_relay.off()  # Lower barrier
-                barrier_up = False
+        # Save timer duration to file when OK button is pressed
+        with open(TIMER_FILE, 'w') as f:
+            ujson.dump(timer_duration, f)
+
+    # Check if ok button is pressed (to start timer)
+    if not ok_button.value() and timer_duration > 0:
+        # Start timer and raise barrier after timer duration
+        barrier_up = True
+        up_relay.on()  # Raise barrier
+        auto_down_timer.init(period=auto_down_time * 1000, mode=Timer.PERIODIC, callback=close_barrier)
+        time.sleep_ms(timer_duration)
+        if barrier_up:
+            up_relay.off()  # Lower barrier
+            barrier_up = False
 
     # Check if barrier is up and no timer is set (manual control)
     if barrier_up and timer_duration == 0:
@@ -80,4 +101,4 @@ while True:
             up_relay.off()
             barrier_up = False
 
-    time.sleep(0.05)  # Wait for a short delay to avoid button bounce
+    time.sleep(0.05)
