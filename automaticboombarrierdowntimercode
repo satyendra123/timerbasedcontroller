@@ -15,6 +15,9 @@ UP_BUTTON_PIN = 0
 DOWN_BUTTON_PIN = 4
 OK_BUTTON_PIN = 5
 
+BARRIER_UP_BUTTON = 25
+BARRIER_DOWN_BUTTON = 26
+
 UP_RELAY_PIN = 12
 DOWN_RELAY_PIN = 13
 
@@ -28,6 +31,9 @@ set_button = Pin(SET_BUTTON_PIN, Pin.IN, Pin.PULL_UP)
 up_button = Pin(UP_BUTTON_PIN, Pin.IN, Pin.PULL_UP)
 down_button = Pin(DOWN_BUTTON_PIN, Pin.IN, Pin.PULL_UP)
 ok_button = Pin(OK_BUTTON_PIN, Pin.IN, Pin.PULL_UP)
+
+barrier_up_button = Pin(BARRIER_UP_BUTTON, Pin.IN, Pin.PULL_UP)
+barrier_down_button = Pin(BARRIER_DOWN_BUTTON, Pin.IN, Pin.PULL_UP)
 
 # Initialize relays
 up_relay = Pin(UP_RELAY_PIN, Pin.OUT)
@@ -88,12 +94,14 @@ while True:
             # Display timer duration (e.g., using LEDs or a display)
 
         # Save timer duration to file when OK button is pressed
-        with open(TIMER_FILE, 'w') as f:
-            ujson.dump(timer_duration, f)
-            print(f"Timer duration saved to file: {timer_duration} ms")
+        if not ok_button.value():
+            with open(TIMER_FILE, 'w') as f:
+                ujson.dump(timer_duration, f)
+                print(f"Timer duration saved to file: {timer_duration} ms")
+            time.sleep(0.2)  # Debounce delay
 
-    # Check if ok button is pressed (to start timer)
-    if not ok_button.value() and timer_duration > 0:
+    # Check if barrier up button is pressed (to start the timer and raise barrier)
+    if not barrier_up_button.value() and timer_duration > 0:
         # Start timer and raise barrier after timer duration
         barrier_up = True
         up_relay.on()  # Raise barrier
@@ -110,7 +118,7 @@ while True:
     # Check if barrier is up and no timer is set (manual control)
     if barrier_up and timer_duration == 0:
         # Check if down button is pressed
-        if not down_button.value():
+        if not barrier_down_button.value():
             # Lower barrier
             up_relay.off()
             down_relay.on()
