@@ -1,5 +1,5 @@
 # let's suppose ki mere ghar me ek motor hai mai chahta hu ki wo motor daily morning me 6 baje apne se chalu ho jaye aur kuch time ke bad autocut ho jaye. to iske liye mai simply kya karunga ki ntp(network time protocol) ka use karunga time set karne ke liye. lekin iske liye hume internet chahiye so hum use krenge wifi library isme
-
+#EXAMPLE-1
 from machine import Pin
 import time
 import network
@@ -37,3 +37,86 @@ while True:
 
     # Wait for the next minute
     time.sleep(60 - current_time[5])  # Wait for the remaining seconds until the next minute
+
+#EXAMPLE-2
+python
+Copy code
+from machine import Pin
+import time
+import network
+import ntptime
+
+# Replace these with your WiFi credentials
+ssid = ""  # mention WiFi name
+password = ""  # mention WiFi password
+
+# Define NTP Server address
+ntpServer = "in.pool.ntp.org"  # Modify as per your country
+gmtOffset_sec = 19800  # Offset from UTC (in seconds) (India GMT 5:30 // 5.5*60*60 = 19800) Modify as per your country
+daylightOffset_sec = 3600  # Daylight offset (in seconds)
+
+# Define relay pin
+relayPin = 33  # Change this to the pin connected to your relay
+
+# Define NTP and WiFi objects
+ntpUDP = None
+timeClient = None
+
+# Define variables for relay control
+relayOnHour = 21   # Relay ON time in 24HR
+relayOnMinute = 39  # Relay ON time Minute
+relayOffHour = 21   # Relay OFF time in 24HR
+relayOffMinute = 40  # Relay OFF time Minute
+relayState = False
+
+def setup():
+    global ntpUDP, timeClient
+    # Connect to WiFi
+    station = network.WLAN(network.STA_IF)
+    station.active(True)
+    station.connect(ssid, password)
+    while not station.isconnected():
+        pass
+
+    # Synchronize time
+    ntptime.host = ntpServer
+    ntptime.settime()
+    
+    # Initialize relay pin as an output
+    relay_pin = Pin(relayPin, Pin.OUT)
+    # relay_pin.value(1)  # uncomment for Active LOW relay
+    relay_pin.value(0)   # comment for Active LOW relay
+
+    # Start NTP time sync
+    ntpUDP = ntptime.NTPClient()
+    timeClient = ntptime.NTPClient()
+    timeClient.settime()
+
+def loop():
+    global relayState
+    # Update NTP time
+    timeClient.settime()
+    
+    # Get current time
+    currentTime = time.time()
+    currentTime = time.localtime(currentTime)
+    
+    # Check if it's time to toggle the relay
+    if currentTime[3] == relayOnHour and currentTime[4] == relayOnMinute:
+        # Turn on the relay
+        relay_pin.value(0)  # uncomment for Active LOW relay
+        # relay_pin.value(1)  # comment for Active LOW relay
+        relayState = True
+        print("Relay ON")
+    elif currentTime[3] == relayOffHour and currentTime[4] == relayOffMinute:
+        # Turn off the relay
+        relay_pin.value(1)  # uncomment for Active LOW relay
+        # relay_pin.value(0)  # comment for Active LOW relay
+        relayState = False
+        print("Relay OFF")
+    # Wait for 1 second before checking again
+    time.sleep(1)
+
+setup()
+while True:
+    loop()
