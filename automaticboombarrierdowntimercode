@@ -65,18 +65,21 @@ auto_down_timer = Timer(-1)
 while True:
     # Check if set button is pressed
     if not set_button.value():
+        print("Entering set mode...")
         # Enter set mode
         while ok_button.value():
             # Check if up button is pressed
             if not up_button.value():
                 # Increase timer duration by 1 second
                 timer_duration += 1000
+                print(f"Timer duration: {timer_duration} ms")
                 time.sleep(0.2)  # Debounce delay
 
             # Check if down button is pressed
             if not down_button.value() and timer_duration > 0:
                 # Decrease timer duration by 1 second (minimum 0)
                 timer_duration -= 1000
+                print(f"Timer duration: {timer_duration} ms")
                 time.sleep(0.2)  # Debounce delay
 
             # Display timer duration (e.g., using LEDs or a display)
@@ -84,18 +87,21 @@ while True:
         # Save timer duration to file when OK button is pressed
         with open(TIMER_FILE, 'w') as f:
             ujson.dump(timer_duration, f)
-
+            print(f"Timer duration saved to file: {duration} ms")
     # Check if ok button is pressed (to start timer)
     if not ok_button.value() and timer_duration > 0:
         # Start timer and raise barrier after timer duration
         barrier_up = True
-        up_relay.on()  # Raise barrier
+        up_relay.on()# Raise barrier
+        time.sleep(0.1)
+        up_relay.off() # Raise barrier
+        print("Barrier is up")
         auto_down_timer.init(period=auto_down_time * 1000, mode=Timer.PERIODIC, callback=close_barrier)
         time.sleep_ms(timer_duration)
         if barrier_up:
             up_relay.off()  # Lower barrier
             barrier_up = False
-
+            print("Barrier is down")
     # Check if barrier is up and no timer is set (manual control)
     if barrier_up and timer_duration == 0:
         # Check if down button is pressed
@@ -103,5 +109,5 @@ while True:
             # Lower barrier
             up_relay.off()
             barrier_up = False
-
+            print("Barrier is manually down")
     time.sleep(0.05)
