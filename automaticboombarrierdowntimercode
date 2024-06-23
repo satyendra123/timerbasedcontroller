@@ -1,6 +1,9 @@
 #lets suppose i have a barrier. i want there should be four button set, up, down, ok button. when i click on the set button it means that we can now start setting the time. up button will increase the 1 second time, down button will decrease the 1 sec time and when i click on the ok button means time is saved.
 # lets suppose mai barrier ka controller banana chahta hu jisme ki barrier jab up ho to after 3 seconds down relay will be triggered and boom barrier will be down. but if boom barrier is already down then the down relay will not be triggered
 # so mai four button ki jagah par four wire connect kar lunga testing krne ke liye aur touch kar karke dekhunga time increase aur decrease karke ki aisa ho bhi rha hai ya nahi
+# i also uses a file to store the settime data in a file and retrieve it from here because when power goes off and comes again it should work as previous set timing. so i have import the os and json for creating the file and store the data in it
+
+
 from machine import Pin, Timer
 import time
 import ujson
