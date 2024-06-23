@@ -1,0 +1,39 @@
+# let's suppose ki mere ghar me ek motor hai mai chahta hu ki wo motor daily morning me 6 baje apne se chalu ho jaye aur kuch time ke bad autocut ho jaye. to iske liye mai simply kya karunga ki ntp(network time protocol) ka use karunga time set karne ke liye. lekin iske liye hume internet chahiye so hum use krenge wifi library isme
+
+from machine import Pin
+import time
+import network
+import ntptime
+
+# Configure relay
+relay_pin = Pin(26, Pin.OUT)  # Digital pin for relay
+
+# Connect to Wi-Fi
+ssid = 'YOUR_WIFI_SSID'
+password = 'YOUR_WIFI_PASSWORD'
+station = network.WLAN(network.STA_IF)
+station.active(True)
+station.connect(ssid, password)
+while not station.isconnected():
+    pass
+
+# Synchronize time
+ntptime.settime()
+
+# Main loop
+while True:
+    # Get current time
+    current_time = time.localtime()
+
+    # Check if it's 6 am
+    if current_time[3] == 6 and current_time[4] == 0:
+        relay_pin.value(1)  # Turn on relay
+        time.sleep(10)  # Keep relay on for 10 seconds
+        relay_pin.value(0)  # Turn off relay
+
+        # Wait until next day
+        while current_time[3] == 6 and current_time[4] == 0:
+            current_time = time.localtime()
+
+    # Wait for the next minute
+    time.sleep(60 - current_time[5])  # Wait for the remaining seconds until the next minute
