@@ -127,3 +127,140 @@ while True:
 
     time.sleep(0.05)
 
+#example-2 complete code with ir and loop. 
+from machine import Pin, Timer
+import time
+import ujson
+
+# Define pin numbers for buttons, relays, and sensors
+SET_BUTTON_PIN = 2
+UP_BUTTON_PIN = 0
+DOWN_BUTTON_PIN = 4
+OK_BUTTON_PIN = 5
+
+BARRIER_UP_BUTTON = 25
+BARRIER_DOWN_BUTTON = 26
+
+UP_RELAY_PIN = 12
+DOWN_RELAY_PIN = 13
+
+LOOP_SENSOR_PIN = 14
+IR_SENSOR_PIN = 27
+
+# Define initial barrier state and timer duration
+barrier_up = False
+timer_duration = 0
+auto_down_time = 10  # Auto down time in seconds
+
+# Initialize buttons
+set_button = Pin(SET_BUTTON_PIN, Pin.IN, Pin.PULL_UP)
+up_button = Pin(UP_BUTTON_PIN, Pin.IN, Pin.PULL_UP)
+down_button = Pin(DOWN_BUTTON_PIN, Pin.IN, Pin.PULL_UP)
+ok_button = Pin(OK_BUTTON_PIN, Pin.IN, Pin.PULL_UP)
+
+barrier_up_button = Pin(BARRIER_UP_BUTTON, Pin.IN, Pin.PULL_UP)
+barrier_down_button = Pin(BARRIER_DOWN_BUTTON, Pin.IN, Pin.PULL_UP)
+
+# Initialize relays
+up_relay = Pin(UP_RELAY_PIN, Pin.OUT)
+down_relay = Pin(DOWN_RELAY_PIN, Pin.OUT)
+
+# Initialize sensors
+loop_sensor = Pin(LOOP_SENSOR_PIN, Pin.IN, Pin.PULL_UP)
+ir_sensor = Pin(IR_SENSOR_PIN, Pin.IN, Pin.PULL_UP)
+
+# Set relays to initial state (barrier down)
+up_relay.off()
+down_relay.on()
+
+# Define file name for storing timer duration
+TIMER_FILE = 'timer.json'
+
+# Load previous timer duration from file
+try:
+    with open(TIMER_FILE, 'r') as f:
+        timer_duration = ujson.load(f)
+except OSError:
+    # File does not exist or unable to open
+    pass
+
+# Initialize timer if not loaded from file
+if timer_duration <= 0:
+    timer_duration = 0
+
+# Timer callback function to close the barrier
+def close_barrier(timer):
+    global barrier_up
+    if barrier_up:
+        up_relay.off()
+        down_relay.on()
+        barrier_up = False
+        print("Barrier is down")
+
+# Timer for auto-down functionality
+auto_down_timer = Timer(-1)
+
+# Enter main loop
+while True:
+    # Check if set button is pressed
+    if not set_button.value():
+        print("Entering set mode...")
+        # Enter set mode
+        while ok_button.value():
+            # Check if up button is pressed
+            if not up_button.value():
+                # Increase timer duration by 1 second
+                timer_duration += 1000
+                print(f"Timer duration: {timer_duration} ms")
+                time.sleep(0.2)  # Debounce delay
+
+            # Check if down button is pressed
+            if not down_button.value() and timer_duration > 0:
+                # Decrease timer duration by 1 second (minimum 0)
+                timer_duration -= 1000
+                print(f"Timer duration: {timer_duration} ms")
+                time.sleep(0.2)  # Debounce delay
+
+            # Display timer duration (e.g., using LEDs or a display)
+
+        # Save timer duration to file when OK button is pressed
+        if not ok_button.value():
+            with open(TIMER_FILE, 'w') as f:
+                ujson.dump(timer_duration, f)
+                print(f"Timer duration saved to file: {timer_duration} ms")
+            time.sleep(0.2)  # Debounce delay
+
+    # Check if barrier up button is pressed (to start the timer and raise barrier)
+    if not barrier_up_button.value() and timer_duration > 0:
+        # Start timer and raise barrier after timer duration
+        barrier_up = True
+        up_relay.on()  # Raise barrier
+        down_relay.off()
+        print("Barrier is up")
+        auto_down_timer.init(period=auto_down_time * 1000, mode=Timer.ONE_SHOT, callback=close_barrier)
+        time.sleep_ms(timer_duration)
+        if barrier_up:
+            up_relay.off()  # Lower barrier
+            down_relay.on()
+            barrier_up = False
+            print("Barrier is down")
+
+    # Check if barrier is up and no timer is set (manual control)
+    if barrier_up and timer_duration == 0:
+        # Check if down button is pressed
+        if not barrier_down_button.value():
+            # Lower barrier
+            up_relay.off()
+            down_relay.on()
+            barrier_up = False
+            print("Barrier is manually down")
+
+    # Check loop sensor and IR sensor to automatically lower barrier when conditions are met
+    if not loop_sensor.value() and not ir_sensor.value() and not barrier_up and timer_duration > 0:
+        # Lower barrier
+        up_relay.off()
+        down_relay.on()
+        barrier_up = False
+        print("No vehicle or IR detected, lowering barrier")
+
+    time.sleep(0.05)
