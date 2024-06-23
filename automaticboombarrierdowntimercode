@@ -1,0 +1,83 @@
+#lets suppose i have a barrier. i want there should be four button set, up, down, ok button. when i click on the set button it means that we can now start setting the time. up button will increase the 1 second time, down button will decrease the 1 sec time and when i click on the ok button means time is saved.
+# lets suppose mai barrier ka controller banana chahta hu jisme ki barrier jab up ho to after 3 seconds down relay will be triggered and boom barrier will be down. but if boom barrier is already down then the down relay will not be triggered
+
+from machine import Pin, Timer
+import time
+
+# Define pin numbers for buttons and relays
+SET_BUTTON_PIN = 2
+UP_BUTTON_PIN = 3
+DOWN_BUTTON_PIN = 4
+OK_BUTTON_PIN = 5
+UP_RELAY_PIN = 12
+DOWN_RELAY_PIN = 13
+
+# Define initial barrier state and timer duration
+barrier_up = False
+timer_duration = 0
+auto_down_time = 10  # Auto down time in seconds
+
+# Initialize buttons
+set_button = Pin(SET_BUTTON_PIN, Pin.IN, Pin.PULL_UP)
+up_button = Pin(UP_BUTTON_PIN, Pin.IN, Pin.PULL_UP)
+down_button = Pin(DOWN_BUTTON_PIN, Pin.IN, Pin.PULL_UP)
+ok_button = Pin(OK_BUTTON_PIN, Pin.IN, Pin.PULL_UP)
+
+# Initialize relays
+up_relay = Pin(UP_RELAY_PIN, Pin.OUT)
+down_relay = Pin(DOWN_RELAY_PIN, Pin.OUT)
+
+# Set relays to initial state (barrier down)
+up_relay.off()
+down_relay.on()
+
+# Timer callback function to close the barrier
+def close_barrier(timer):
+    global barrier_up
+    if barrier_up:
+        up_relay.off()
+        barrier_up = False
+
+# Timer for auto-down functionality
+auto_down_timer = Timer(-1)
+
+# Enter main loop
+while True:
+    # Check if set button is pressed
+    if not set_button.value():
+        # Enter set mode
+        while ok_button.value():
+            # Check if up button is pressed
+            if not up_button.value():
+                # Increase timer duration by 1 second
+                timer_duration += 1000
+                time.sleep(0.2)  # Debounce delay
+
+            # Check if down button is pressed
+            if not down_button.value() and timer_duration > 0:
+                # Decrease timer duration by 1 second (minimum 0)
+                timer_duration -= 1000
+                time.sleep(0.2)  # Debounce delay
+
+            # Display timer duration (e.g., using LEDs or a display)
+
+        # Check if ok button is pressed (to confirm timer setting)
+        if not ok_button.value():
+            # Start timer and raise barrier after timer duration
+            barrier_up = True
+            up_relay.on()  # Raise barrier
+            auto_down_timer.init(period=auto_down_time * 1000, mode=Timer.ONE_SHOT, callback=close_barrier)
+            time.sleep_ms(timer_duration)
+            if barrier_up:
+                up_relay.off()  # Lower barrier
+                barrier_up = False
+
+    # Check if barrier is up and no timer is set (manual control)
+    if barrier_up and timer_duration == 0:
+        # Check if down button is pressed
+        if not down_button.value():
+            # Lower barrier
+            up_relay.off()
+            barrier_up = False
+
+    time.sleep(0.05)  # Wait for a short delay to avoid button bounce
