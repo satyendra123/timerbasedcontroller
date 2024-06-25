@@ -267,160 +267,102 @@ while True:
 
 
 #EXAMPLE-2
-from machine import Pin, Timer
+from machine import Pin
 import time
-import os
+import json
 
-# Define pin numbers for buttons and relays
-MENU_BUTTON_PIN = 2
-UP_BUTTON_PIN = 0
-DOWN_BUTTON_PIN = 4
-OK_BUTTON_PIN = 5
+# Define GPIO pins for the buttons
+button_menu = Pin(2, Pin.IN, Pin.PULL_UP)
+button_up = Pin(0, Pin.IN, Pin.PULL_UP)
+button_down = Pin(4, Pin.IN, Pin.PULL_UP)
+button_ok = Pin(5, Pin.IN, Pin.PULL_UP)
+button_exit = Pin(26, Pin.IN, Pin.PULL_UP)
 
-BARRIER_UP_BUTTON = 25
-BARRIER_DOWN_BUTTON = 26
+# Define the menu and submenu structure
+menu = ["F1", "F2", "F3", "F4", "F5", "F6"]
 
-UP_RELAY_PIN = 12
-DOWN_RELAY_PIN = 13
+submenu = {
+    "F1": {"1": {"name": "option1", "timer": 0}, "2": {"name": "option2", "timer": 0}, "3": {"name": "option3", "timer": 0}, "4": {"name": "option4", "timer": 0}, "5": {"name": "option5", "timer": 0}},
+    "F2": {"1": {"name": "option1", "timer": 0}, "2": {"name": "option2", "timer": 0}, "3": {"name": "option3", "timer": 0}, "4": {"name": "option4", "timer": 0}, "5": {"name": "option5", "timer": 0}},
+    "F3": {"1": {"name": "option1", "timer": 0}, "2": {"name": "option2", "timer": 0}, "3": {"name": "option3", "timer": 0}, "4": {"name": "option4", "timer": 0}, "5": {"name": "option5", "timer": 0}},
+    "F4": {"1": {"name": "option1", "timer": 0}, "2": {"name": "option2", "timer": 0}, "3": {"name": "option3", "timer": 0}, "4": {"name": "option4", "timer": 0}, "5": {"name": "option5", "timer": 0}},
+    "F5": {"1": {"name": "option1", "timer": 0}, "2": {"name": "option2", "timer": 0}, "3": {"name": "option3", "timer": 0}, "4": {"name": "option4", "timer": 0}, "5": {"name": "option5", "timer": 0}},
+}
 
-# Define initial barrier state and timer duration
-barrier_up = False
-timer_duration = 0
-auto_down_time = 10  # Auto down time in seconds
+current_menu_index = 0
+current_submenu_index = 1
+in_submenu = False
+setting_timer = False
 
-# Initialize buttons
-menu_button = Pin(MENU_BUTTON_PIN, Pin.IN, Pin.PULL_UP)
-up_button = Pin(UP_BUTTON_PIN, Pin.IN, Pin.PULL_UP)
-down_button = Pin(DOWN_BUTTON_PIN, Pin.IN, Pin.PULL_UP)
-ok_button = Pin(OK_BUTTON_PIN, Pin.IN, Pin.PULL_UP)
+def save_timers():
+    with open('timers.txt', 'w') as f:
+        json.dump(submenu, f)
 
-barrier_up_button = Pin(BARRIER_UP_BUTTON, Pin.IN, Pin.PULL_UP)
-barrier_down_button = Pin(BARRIER_DOWN_BUTTON, Pin.IN, Pin.PULL_UP)
+def load_timers():
+    global submenu
+    try:
+        with open('timers.txt', 'r') as f:
+            submenu = json.load(f)
+    except OSError:
+        save_timers()  # Create the file if it doesn't exist
 
-# Initialize relays
-up_relay = Pin(UP_RELAY_PIN, Pin.OUT)
-down_relay = Pin(DOWN_RELAY_PIN, Pin.OUT)
+def print_current_menu(index):
+    print(f"Current Menu: {menu[index]}")
 
-# Set relays to initial state (barrier down)
-up_relay.off()
-down_relay.on()
+def print_current_submenu(menu_name, index):
+    submenu_items = list(submenu[menu_name].items())
+    print(f"Submenu for {menu_name}: {submenu_items[index - 1][0]}: {submenu_items[index - 1][1]['name']} (Timer: {submenu_items[index - 1][1]['timer']} sec)")
 
-# Define file names for storing timer duration and settings
-TIMER_FILE = 'timer.txt'
-SETTINGS_FILE = 'settings.txt'
+def button_pressed(pin):
+    return not pin.value()
 
-# Load previous timer duration from file
-try:
-    with open(TIMER_FILE, 'r') as f:
-        timer_duration = int(f.read())
-except OSError:
-    # File does not exist or unable to open
-    pass
+load_timers()
+print_current_menu(current_menu_index)
 
-# Load previous settings from file
-try:
-    with open(SETTINGS_FILE, 'r') as f:
-        settings = {}
-        for line in f:
-            key, value = line.strip().split('=')
-            settings[key] = int(value)
-except OSError:
-    # File does not exist or unable to open
-    settings = {"f1_speed": 1}
-
-# Initialize timer if not loaded from file
-if timer_duration <= 0:
-    timer_duration = 0
-
-# Timer callback function to close the barrier
-def close_barrier(timer):
-    global barrier_up
-    if barrier_up:
-        up_relay.off()
-        down_relay.on()
-        barrier_up = False
-        print("Barrier is down")
-
-# Timer for auto-down functionality
-auto_down_timer = Timer(-1)
-
-# Function to handle menu navigation and settings
-def menu_system():
-    menu_items = ["F1: Set Up Speed", "F2", "F3", "F4", "F5", "F6", "F7"]
-    current_item = 0
-    while not ok_button.value():
-        print(menu_items[current_item])
-        time.sleep(0.2)
-        if not up_button.value():
-            current_item = (current_item + 1) % len(menu_items)
-            time.sleep(0.2)  # Debounce delay
-        if not down_button.value():
-            current_item = (current_item - 1) % len(menu_items)
-            time.sleep(0.2)  # Debounce delay
-
-    if current_item == 0:
-        set_up_speed()
-    # Add more conditions for other menu items if needed
-    print("Exiting menu system...")
-
-# Function to set up speed in F1
-def set_up_speed():
-    global settings
-    print("Enter F1: Set Up Speed")
-    while not ok_button.value():
-        print(f"Up Speed: {settings['f1_speed']}")
-        time.sleep(0.2)
-        if not up_button.value():
-            settings['f1_speed'] = min(settings['f1_speed'] + 1, 8)
-            time.sleep(0.2)  # Debounce delay
-        if not down_button.value():
-            settings['f1_speed'] = max(settings['f1_speed'] - 1, 1)
-            time.sleep(0.2)  # Debounce delay
-    save_settings()
-
-# Function to save settings to file
-def save_settings():
-    with open(SETTINGS_FILE, 'w') as f:
-        for key, value in settings.items():
-            f.write(f"{key}={value}\n")
-    print("Settings saved")
-
-# Function to save timer duration to file
-def save_timer_duration():
-    with open(TIMER_FILE, 'w') as f:
-        f.write(str(timer_duration))
-    print("Timer duration saved")
-
-# Enter main loop
 while True:
-    # Check if menu button is pressed
-    if not menu_button.value():
-        print("Entering menu system...")
-        menu_system()
+    if button_pressed(button_exit):
+        if setting_timer:
+            setting_timer = False
+            print_current_submenu(menu[current_menu_index], current_submenu_index)
+        elif in_submenu:
+            in_submenu = False
+            print_current_menu(current_menu_index)
+        else:
+            print_current_menu(current_menu_index)
+        time.sleep(0.3)  # Debounce delay
 
-    # Check if barrier up button is pressed (to start the timer and raise barrier)
-    if not barrier_up_button.value() and timer_duration > 0:
-        # Start timer and raise barrier after timer duration
-        barrier_up = True
-        up_relay.on()  # Raise barrier
-        down_relay.off()
-        print("Barrier is up")
-        auto_down_timer.init(period=auto_down_time * 1000, mode=Timer.ONE_SHOT, callback=close_barrier)
-        time.sleep_ms(timer_duration)
-        if barrier_up:
-            up_relay.off()  # Lower barrier
-            down_relay.on()
-            barrier_up = False
-            print("Barrier is down")
+    elif button_pressed(button_up):
+        if setting_timer:
+            submenu[menu[current_menu_index]][str(current_submenu_index)]['timer'] += 1
+            print(f"Set Timer: {submenu[menu[current_menu_index]][str(current_submenu_index)]['timer']} sec")
+        elif in_submenu:
+            current_submenu_index = (current_submenu_index % len(submenu[menu[current_menu_index]])) + 1
+            print_current_submenu(menu[current_menu_index], current_submenu_index)
+        else:
+            current_menu_index = (current_menu_index + 1) % len(menu)
+            print_current_menu(current_menu_index)
+        time.sleep(0.3)  # Debounce delay
 
-    # Check if barrier is up and no timer is set (manual control)
-    if barrier_up and timer_duration == 0:
-        # Check if down button is pressed
-        if not barrier_down_button.value():
-            # Lower barrier
-            up_relay.off()
-            down_relay.on()
-            barrier_up = False
-            print("Barrier is manually down")
+    elif button_pressed(button_down):
+        if setting_timer:
+            submenu[menu[current_menu_index]][str(current_submenu_index)]['timer'] = max(0, submenu[menu[current_menu_index]][str(current_submenu_index)]['timer'] - 1)
+            print(f"Set Timer: {submenu[menu[current_menu_index]][str(current_submenu_index)]['timer']} sec")
+        elif in_submenu:
+            current_submenu_index = (current_submenu_index - 2) % len(submenu[menu[current_menu_index]]) + 1
+            print_current_submenu(menu[current_menu_index], current_submenu_index)
+        else:
+            current_menu_index = (current_menu_index - 1) % len(menu)
+            print_current_menu(current_menu_index)
+        time.sleep(0.3)  # Debounce delay
 
-    time.sleep(0.05)
+    elif button_pressed(button_ok):
+        if in_submenu and not setting_timer:
+            setting_timer = True
+            print(f"Set Timer: {submenu[menu[current_menu_index]][str(current_submenu_index)]['timer']} sec")
+        elif not in_submenu:
+            in_submenu = True
+            current_submenu_index = 1
+            print_current_submenu(menu[current_menu_index], current_submenu_index)
+        save_timers()
+        time.sleep(0.3)  # Debounce delay
+
