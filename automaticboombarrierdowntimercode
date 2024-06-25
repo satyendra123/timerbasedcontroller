@@ -266,7 +266,9 @@ while True:
     time.sleep(0.05)
 
 
-#EXAMPLE-2
+#EXAMPLE-2 i have made the menus and submenus based code. i have 5 jumper wires. menu(pin2), up(pin0), down(pin4), ok(pin5), gnd(esp32gnd). this will work as a button when i touch the anyjumper wire with the gnd. 
+#when i click on the menu button i will enter into the menu option and first item will be displayed. and when i click on the up button then i will move in forward direction and when i click on the down button i will move backward options and when i click on the ok button i will enter into the submenus and after when i set the timer and click on the ok then the timer data will be saved 
+# and automatically come back to menus option. and when i click on the menus button again then i will exited from the menus
 from machine import Pin
 import time
 import json
