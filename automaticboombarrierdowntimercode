@@ -293,6 +293,7 @@ current_menu_index = 0
 current_submenu_index = 1
 in_submenu = False
 setting_timer = False
+menu_active = False
 
 def save_timers():
     with open('timers.txt', 'w') as f:
@@ -317,52 +318,68 @@ def button_pressed(pin):
     return not pin.value()
 
 load_timers()
-print_current_menu(current_menu_index)
 
 while True:
-    if button_pressed(button_exit):
-        if setting_timer:
-            setting_timer = False
-            print_current_submenu(menu[current_menu_index], current_submenu_index)
-        elif in_submenu:
+    if button_pressed(button_menu):
+        if menu_active:
+            menu_active = False
             in_submenu = False
-            print_current_menu(current_menu_index)
+            print("Exited Menu.")
         else:
+            menu_active = True
             print_current_menu(current_menu_index)
         time.sleep(0.3)  # Debounce delay
 
-    elif button_pressed(button_up):
-        if setting_timer:
-            submenu[menu[current_menu_index]][str(current_submenu_index)]['timer'] += 1
-            print(f"Set Timer: {submenu[menu[current_menu_index]][str(current_submenu_index)]['timer']} sec")
-        elif in_submenu:
-            current_submenu_index = (current_submenu_index % len(submenu[menu[current_menu_index]])) + 1
-            print_current_submenu(menu[current_menu_index], current_submenu_index)
-        else:
-            current_menu_index = (current_menu_index + 1) % len(menu)
-            print_current_menu(current_menu_index)
-        time.sleep(0.3)  # Debounce delay
+    if menu_active:
+        if button_pressed(button_exit):
+            if setting_timer:
+                setting_timer = False
+                print_current_submenu(menu[current_menu_index], current_submenu_index)
+            elif in_submenu:
+                in_submenu = False
+                print_current_menu(current_menu_index)
+            else:
+                menu_active = False
+                print("Menu deactivated.")
+            time.sleep(0.3)  # Debounce delay
 
-    elif button_pressed(button_down):
-        if setting_timer:
-            submenu[menu[current_menu_index]][str(current_submenu_index)]['timer'] = max(0, submenu[menu[current_menu_index]][str(current_submenu_index)]['timer'] - 1)
-            print(f"Set Timer: {submenu[menu[current_menu_index]][str(current_submenu_index)]['timer']} sec")
-        elif in_submenu:
-            current_submenu_index = (current_submenu_index - 2) % len(submenu[menu[current_menu_index]]) + 1
-            print_current_submenu(menu[current_menu_index], current_submenu_index)
-        else:
-            current_menu_index = (current_menu_index - 1) % len(menu)
-            print_current_menu(current_menu_index)
-        time.sleep(0.3)  # Debounce delay
+        elif button_pressed(button_up):
+            if setting_timer:
+                submenu[menu[current_menu_index]][str(current_submenu_index)]['timer'] += 1
+                print(f"Set Timer: {submenu[menu[current_menu_index]][str(current_submenu_index)]['timer']} sec")
+            elif in_submenu:
+                current_submenu_index = (current_submenu_index % len(submenu[menu[current_menu_index]])) + 1
+                print_current_submenu(menu[current_menu_index], current_submenu_index)
+            else:
+                current_menu_index = (current_menu_index + 1) % len(menu)
+                print_current_menu(current_menu_index)
+            time.sleep(0.3)  # Debounce delay
 
-    elif button_pressed(button_ok):
-        if in_submenu and not setting_timer:
-            setting_timer = True
-            print(f"Set Timer: {submenu[menu[current_menu_index]][str(current_submenu_index)]['timer']} sec")
-        elif not in_submenu:
-            in_submenu = True
-            current_submenu_index = 1
-            print_current_submenu(menu[current_menu_index], current_submenu_index)
-        save_timers()
-        time.sleep(0.3)  # Debounce delay
+        elif button_pressed(button_down):
+            if setting_timer:
+                submenu[menu[current_menu_index]][str(current_submenu_index)]['timer'] = max(0, submenu[menu[current_menu_index]][str(current_submenu_index)]['timer'] - 1)
+                print(f"Set Timer: {submenu[menu[current_menu_index]][str(current_submenu_index)]['timer']} sec")
+            elif in_submenu:
+                current_submenu_index = (current_submenu_index - 2) % len(submenu[menu[current_menu_index]]) + 1
+                print_current_submenu(menu[current_menu_index], current_submenu_index)
+            else:
+                current_menu_index = (current_menu_index - 1) % len(menu)
+                print_current_menu(current_menu_index)
+            time.sleep(0.3)  # Debounce delay
+
+        elif button_pressed(button_ok):
+            if setting_timer:
+                setting_timer = False
+                save_timers()
+                print("Timer saved.")
+                print_current_menu(current_menu_index)
+            elif in_submenu:
+                setting_timer = True
+                print(f"Set Timer: {submenu[menu[current_menu_index]][str(current_submenu_index)]['timer']} sec")
+            else:
+                in_submenu = True
+                current_submenu_index = 1
+                print_current_submenu(menu[current_menu_index], current_submenu_index)
+            time.sleep(0.3)  # Debounce delay
+'''
 
